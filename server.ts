@@ -4,6 +4,9 @@ import { Server } from "socket.io";
 import Game from "./src/game";
 
 const app: Application = express();
+app.get("/", (req: Request, res: Response) => {
+  res.send("Hello World!");
+});
 const server: http.Server = http.createServer(app);
 
 const PORT: string = process.env.PORT || "8080";

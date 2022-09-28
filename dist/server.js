@@ -8,6 +8,9 @@ const http_1 = __importDefault(require("http"));
 const socket_io_1 = require("socket.io");
 const game_1 = __importDefault(require("./src/game"));
 const app = (0, express_1.default)();
+app.get("/", (req, res) => {
+    res.send("Hello World!");
+});
 const server = http_1.default.createServer(app);
 const PORT = process.env.PORT || "8080";
 //本番環境ではnetlifyのURLを指定する
