@@ -174,12 +174,6 @@ class Game {
     this.io.emit("updateConnectionCount", {
       newConnectCount: this._currentUser.length,
     });
-
-    // if (!this._playing) return;
-    // this.tetris.gameEnd(
-    //   "相手とのコネクションが切断されたためタイトルに戻ります"
-    // );
-    // this._playing = false;
   }
 
   //ソケットからuserの情報を取得する
