@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
 const server = http_1.default.createServer(app);
 const PORT = process.env.PORT || "8080";
 //本番環境ではnetlifyのURLを指定する
-const path = "https://cosmic-kitsune-a7f220.netlify.app/";
+const path = "*";
 const io = new socket_io_1.Server(server, {
     cors: {
         origin: path,
