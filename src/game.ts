@@ -29,10 +29,6 @@ class Game {
         this.RemoveConnection();
       });
 
-      socket.on("okok", (data) => {
-        console.log(data);
-      });
-
       //ゲーム準備ok
       socket.on("readyStart", (data) => {
         if (this._playing) {
@@ -66,11 +62,15 @@ class Game {
 
   private RemoveConnection(): void {
     this.connectionCount--;
-    this.tetris.gameEnd();
-    this._playing = false;
     this.io.emit("updateConnectionCount", {
       newConnectCount: this.connectionCount,
     });
+
+    if (!this._playing) return;
+    this.tetris.gameEnd(
+      "相手とのコネクションが切断されたためタイトルに戻ります"
+    );
+    this._playing = false;
   }
 
   public emitMessage(

@@ -51,11 +51,11 @@ class Tetris {
     }, 500);
   }
 
-  public gameEnd(): void {
+  public gameEnd(message: string): void {
     console.log("gameEnd");
     clearInterval(this._interval_id);
     this.ResetBoard();
-    this._game.emitMessage("gameOver");
+    this._game.emitMessage("backToTitle", { message: message });
     this._game._playing = false;
   }
 
@@ -154,7 +154,7 @@ class Tetris {
 
     //ゲームオーバー判定を行い、データを送信
     if (this.gameOverCheck()) {
-      this.gameEnd();
+      this.gameEnd("Game Over");
       this.ResetBoard();
       return;
     }
