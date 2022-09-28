@@ -4,7 +4,7 @@ import { clearInterval } from "timers";
 import Game from "./game";
 import {
   block,
-  colorData,
+  boardData,
   MinoData,
   MinoProps,
   RotateLeft,
@@ -22,12 +22,16 @@ class Tetris {
   private _currentMino!: { minodata: MinoProps; pos: { x: number; y: number } };
   private _interval_id!: NodeJS.Timeout;
 
-  constructor(game: Game) {
+  //ゲームのあるroomid
+  private _roomId: string = "";
+
+  constructor(game: Game, roomId: string) {
     this._board = Array(20)
       .fill(0)
       .map(() => Array(10).fill(0));
     this._minoqueue = [];
     this._game = game;
+    this._roomId = roomId;
   }
 
   public gameStart(): void {
@@ -55,8 +59,12 @@ class Tetris {
     console.log("gameEnd");
     clearInterval(this._interval_id);
     this.ResetBoard();
-    this._game.emitMessage("backToTitle", { message: message });
-    this._game._playing = false;
+    this._game.emitMessage({
+      message: "backToTitle",
+      data: { message: message },
+      roomId: this._roomId,
+    });
+    this._game.gameFinished(this._roomId);
   }
 
   //ミノを動かす
@@ -69,7 +77,11 @@ class Tetris {
     if (this.canPut(dirvec[direction].x, dirvec[direction].y)) {
       this._currentMino.pos.x += dirvec[direction].x;
       this._currentMino.pos.y += dirvec[direction].y;
-      this._game.emitMessage("updateMino", { pos: this._currentMino.pos });
+      this._game.emitMessage({
+        message: "updateMino",
+        data: { pos: this._currentMino.pos },
+        roomId: this._roomId,
+      });
     } else {
       if (direction == "down") {
         this.fixMino();
@@ -121,9 +133,13 @@ class Tetris {
     this._currentMino.minodata.blockdata = _nextblockdata!;
     this._currentMino.pos = _pos;
     console.log(_pos);
-    this._game.emitMessage("updateMino", {
-      pos: _pos,
-      blockdata: this._currentMino.minodata.blockdata,
+    this._game.emitMessage({
+      message: "updateMino",
+      data: {
+        pos: _pos,
+        blockdata: this._currentMino.minodata.blockdata,
+      },
+      roomId: this._roomId,
     });
   }
 
@@ -134,7 +150,7 @@ class Tetris {
         if (this._currentMino.minodata.blockdata[i][j] === 1) {
           this._board[this._currentMino.pos.y + i][
             this._currentMino.pos.x + j
-          ] = colorData[this._currentMino.minodata.name];
+          ] = boardData[this._currentMino.minodata.name];
         }
       }
     }
@@ -142,7 +158,11 @@ class Tetris {
     //ライン消す判定を行い、データを送信
     const deleteline = this.lineCheck();
     if (deleteline.length != 0) {
-      this._game.emitMessage("deleteLine", deleteline);
+      this._game.emitMessage({
+        message: "deleteLine",
+        data: deleteline,
+        roomId: this._roomId,
+      });
       deleteline.forEach((line) => {
         delete this._board[line];
       });
@@ -164,16 +184,17 @@ class Tetris {
     this.makeMino();
   }
 
-  public makeMino(socket?: socketio.Socket): void {
-    this._game.emitMessage(
-      "makeMino",
-      {
+  //ミノの作成
+  public makeMino(): void {
+    this._game.emitMessage({
+      message: "makeMino",
+      data: {
         nextboard: this._board,
         nextmino: this._currentMino.minodata,
         startpos: this._currentMino.pos,
       },
-      socket
-    );
+      roomId: this._roomId,
+    });
   }
 
   //消せるラインがあるか判定

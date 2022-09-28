@@ -8,7 +8,7 @@ export interface MinoProps {
   color: string;
 }
 
-export const colorData: { [key in MinoType]: MinoColor } = {
+export const boardData: { [key in MinoType]: MinoColor } = {
   I: 1,
   O: 2,
   T: 3,
