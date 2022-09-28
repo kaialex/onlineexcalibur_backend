@@ -9,7 +9,7 @@ interface matchingData {
   tetris: Tetris;
 }
 
-interface userData {
+export interface userData {
   id: string;
   socket: socketio.Socket;
   timeout: NodeJS.Timeout | undefined;
@@ -33,9 +33,7 @@ class Game {
   private _waitMatching: userData[] = [];
   private _currentPlaying: matchingData[] = [];
 
-  constructor() {
-    // this.tetris = new Tetris(this, "");
-  }
+  constructor() {}
 
   public start(io: socketio.Server): void {
     this.io = io;
@@ -96,12 +94,10 @@ class Game {
   private GameEvent(socket: socketio.Socket): void {
     //ゲーム準備ok
     socket.on("readyStart", (data) => {
-      //ユーザごとのゲーム準備確認
-      const _user = this.getUser(socket);
+      //全てのユーザが準備okならゲーム開始
+      const [_game, _user] = this.getGame(socket);
       _user.status = "playing";
 
-      //全てのユーザが準備okならゲーム開始
-      const _game = this.getGame(socket);
       if (
         _game.player1.status === "playing" &&
         _game.player2.status === "playing"
@@ -112,20 +108,20 @@ class Game {
 
     //ミノを動かした
     socket.on("moveMino", (direction: "left" | "right") => {
-      const _game = this.getGame(socket);
-      _game.tetris.moveMino(direction);
+      const [_game, _user] = this.getGame(socket);
+      _game.tetris.moveMino(direction, _user);
     });
 
     //ミノを落とした
     socket.on("dropMino", (data) => {
-      const _game = this.getGame(socket);
-      _game.tetris.dropMino();
+      const [_game, _user] = this.getGame(socket);
+      _game.tetris.dropMino(_user);
     });
 
     //ミノを回転させた
     socket.on("rotateMino", (direction: "left" | "right") => {
-      const _game = this.getGame(socket);
-      _game.tetris.rotateMino(direction);
+      const [_game, _user] = this.getGame(socket);
+      _game.tetris.rotateMino(direction, _user);
     });
   }
 
@@ -140,7 +136,6 @@ class Game {
     this.io.emit("updateConnectionCount", {
       newConnectCount: this._currentUser.length,
     });
-    console.log(this._currentUser.length);
   }
 
   private RemoveConnection(socket: socketio.Socket): void {
@@ -151,14 +146,16 @@ class Game {
       );
     } else if (_user.status === "playing") {
       //ユーザが参加しているゲームを探す
-      const _game = this.getGame(socket);
+      const [_game, _user] = this.getGame(socket);
       //落ちた人と対戦していた人をタイトルに戻す
       const _opponent =
         _game.player1.id === socket.id ? _game.player2 : _game.player1;
       _opponent.status = "title";
-      _game.tetris.gameEnd(
-        "相手とのコネクションが切断されたためタイトルに戻ります"
+      _game.tetris.makePopup(
+        "相手とのコネクションが切断されたためタイトルに戻ります",
+        [_opponent.socket]
       );
+      _game.tetris.gameEnd();
 
       //ゲームを終了させる
       this._currentPlaying = this._currentPlaying.filter(
@@ -177,25 +174,30 @@ class Game {
   }
 
   //ソケットからuserの情報を取得する
-  private getUser(socket: socketio.Socket): userData {
+  private getUser(socket: socketio.Socket, game?: matchingData): userData {
+    if (game) {
+      return game.player1.id === socket.id ? game.player1 : game.player2;
+    }
     const _user = this._currentUser.find((value) => value.id === socket.id);
     if (_user === undefined) throw new Error("user not found");
     return _user;
   }
 
-  //ソケットから参加しているゲームを取得して返す
-  private getGame(socket: socketio.Socket): matchingData {
+  //ソケットから参加しているゲームを取得し、ゲームとユーザを返す
+  private getGame(socket: socketio.Socket): [matchingData, userData] {
     const _game = this._currentPlaying.find((value) => {
       return value.player1.id === socket.id || value.player2.id === socket.id;
     });
     if (_game === undefined) throw new Error("game not found");
-    return _game;
+    const _user =
+      _game.player1.id === socket.id ? _game.player1 : _game.player2;
+    return [_game, _user];
   }
 
   //ゲームの作成を行う
   private startGame(player1: userData, player2: userData) {
     const _roomId = player1.id + player2.id;
-    const _tetris = new Tetris(this, _roomId);
+    const _tetris = new Tetris(this, _roomId, [player1, player2]);
     const _matchingData: matchingData = {
       roomId: _roomId,
       player1: player1,
@@ -203,8 +205,6 @@ class Game {
       tetris: _tetris,
     };
     this._currentPlaying.push(_matchingData);
-
-    console.log(_roomId);
 
     //ゲーム開始
     this.emitMessage({ message: "startGame", roomId: _roomId });
