@@ -59,6 +59,7 @@ class Game {
           return;
         this.emitMessage({ message: "waitMatching", socket: [socket] });
         const _user = this.getUser(socket);
+        _user.status = "matching";
 
         //マッチング中のユーザーを探す
         if (this._waitMatching.length > 0) {
@@ -143,10 +144,12 @@ class Game {
 
   private RemoveConnection(socket: socketio.Socket): void {
     const _user = this.getUser(socket);
+    console.log(_user.status);
     if (_user.status === "matching") {
       this._waitMatching = this._waitMatching.filter(
         (value) => value.id !== socket.id
       );
+      _user.status = "title";
     } else if (_user.status === "playing" || _user.status === "ready") {
       //ユーザが参加しているゲームを探す
       const [_game, _user] = this.getGame(socket);
@@ -169,10 +172,6 @@ class Game {
     this._currentUser = this._currentUser.filter(
       (value) => value.id !== socket.id
     );
-
-    this.io.emit("updateConnectionCount", {
-      newConnectCount: this._currentUser.length,
-    });
   }
 
   //ソケットからuserの情報を取得する
