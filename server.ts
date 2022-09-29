@@ -11,7 +11,7 @@ const server: http.Server = http.createServer(app);
 
 const PORT: string = process.env.PORT || "8080";
 //本番環境ではnetlifyのURLを指定する
-const path: string = "*";
+const path: string = "https://cosmic-kitsune-a7f220.netlify.app/";
 
 const io: Server = new Server(server, {
   cors: {
