@@ -110,7 +110,7 @@ export const RotateRight = (blockdata: block[][]): block[][] => {
   for (let i = 0; i < blockdata.length; i++) {
     newblockdata.push([]);
     for (let j = 0; j < blockdata[i].length; j++) {
-      newblockdata[i].push(blockdata[j][blockdata.length - i - 1]);
+      newblockdata[i].push(blockdata[blockdata.length - j - 1][i]);
     }
   }
   return newblockdata;
@@ -121,7 +121,7 @@ export const RotateLeft = (blockdata: block[][]): block[][] => {
   for (let i = 0; i < blockdata.length; i++) {
     newblockdata.push([]);
     for (let j = 0; j < blockdata[i].length; j++) {
-      newblockdata[i].push(blockdata[blockdata.length - j - 1][i]);
+      newblockdata[i].push(blockdata[j][blockdata.length - i - 1]);
     }
   }
   return newblockdata;
