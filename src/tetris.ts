@@ -29,6 +29,9 @@ class Tetris {
   private _currentMino!: { minodata: MinoProps; pos: { x: number; y: number } };
   private _interval_id!: NodeJS.Timeout;
 
+  private readonly _dropTime: number = 1000;
+  private _currentdropTime: number;
+
   //ゲームのあるroomid
   private _roomId: string = "";
 
@@ -44,6 +47,7 @@ class Tetris {
     this._player.forEach((player) => {
       this._score[player.id] = 0;
     });
+    this._currentdropTime = this._dropTime;
   }
 
   public gameStart(): void {
@@ -53,6 +57,9 @@ class Tetris {
 
     this._currentMino = { minodata: this.getNextMino(), pos: { x: 3, y: 0 } };
     this.makeMino();
+
+    //スコアを通知
+    this.sendScore();
 
     //タイマースタート2秒おきに、ミノを落とす
     this.resetTimer();
@@ -64,7 +71,7 @@ class Tetris {
     }
     this._interval_id = setInterval(() => {
       this.moveMino("down", this._currentTurnUser);
-    }, 500);
+    }, this._currentdropTime);
   }
 
   public gameEnd(): void {
@@ -199,26 +206,27 @@ class Tetris {
     if (this.gameOverCheck()) {
       this.gameEnd();
 
-      if (this._score[this._player[0].id] == this._score[this._player[1].id]) {
-        this.makePopup(
-          `引き分け! スコア:${this._score[this._player[0].id]}`,
-          this._player.map((user) => user.socket)
-        );
-      } else {
+      const winnerUser: userData = this._currentTurnUser;
+      const loserUser: userData =
+        this._currentTurnUser === this._player[0]
+          ? this._player[1]
+          : this._player[0];
+
+      if (this._score[this._player[0].id] !== this._score[this._player[1].id]) {
         const [winner, loser] =
           this._score[this._player[0].id] > this._score[this._player[1].id]
             ? [0, 1]
             : [1, 0];
         const winnerUser = this._player[winner];
         const loserUser = this._player[loser];
-
-        this.makePopup(`あなたの勝ち! スコア:${this._score[winnerUser.id]}`, [
-          winnerUser.socket,
-        ]);
-        this.makePopup(`あなたの負け! スコア:${this._score[loserUser.id]}`, [
-          loserUser.socket,
-        ]);
       }
+
+      this.makePopup(`あなたの勝ち! スコア:${this._score[winnerUser.id]}`, [
+        winnerUser.socket,
+      ]);
+      this.makePopup(`あなたの負け! スコア:${this._score[loserUser.id]}`, [
+        loserUser.socket,
+      ]);
 
       this.ResetBoard();
       return;
@@ -233,6 +241,26 @@ class Tetris {
       this._currentTurnUser === this._player[0]
         ? this._player[1]
         : this._player[0];
+
+    //スコアの通知送信
+    this.sendScore();
+  }
+
+  //スコアの通知
+  public sendScore(): void {
+    for (let i = 0; i < this._player.length; i++) {
+      const _playerscore = this._score[this._player[i].id];
+      const _opponentscore = this._score[this._player[i === 0 ? 1 : 0].id];
+      this._game.emitMessage({
+        message: "updateScore",
+        data: {
+          isturn:
+            this._currentTurnUser.id === this._player[i].id ? true : false,
+          score: [_playerscore, _opponentscore],
+        },
+        socket: [this._player[i].socket],
+      });
+    }
   }
 
   //ミノの作成
@@ -302,9 +330,11 @@ class Tetris {
     return nextmino!;
   }
 
-  //次のミノを追加
+  //次のミノ1セットを追加し、ドロップ間隔を短くする
   private AddMinoQueue(): void {
     this._minoqueue = this._minoqueue.concat(this.shuffle(MinoData));
+    this._currentdropTime = this._dropTime * 0.9;
+    this.resetTimer();
   }
 
   //Arrayのランダムシャッフル

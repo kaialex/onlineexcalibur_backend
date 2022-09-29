@@ -13,7 +13,7 @@ export interface userData {
   id: string;
   socket: socketio.Socket;
   timeout: NodeJS.Timeout | undefined;
-  status: "title" | "matching" | "playing" | "other";
+  status: "title" | "matching" | "playing" | "ready" | "other";
 }
 
 interface messageProps {
@@ -57,6 +57,7 @@ class Game {
       socket.on("matching", () => {
         if (this._waitMatching.map((user) => user.id).includes(socket.id))
           return;
+        this.emitMessage({ message: "waitMatching", socket: [socket] });
         const _user = this.getUser(socket);
 
         //マッチング中のユーザーを探す
@@ -76,11 +77,16 @@ class Game {
         else {
           console.log("add");
           const _timeout = setTimeout(() => {
-            console.log("マッチングに失敗しました");
+            this.emitMessage({
+              message: "makePopup",
+              data: { message: "マッチングに失敗しました" },
+              socket: [socket],
+            });
             this._waitMatching = this._waitMatching.filter(
               (value) => value.id !== socket.id
             );
-          }, 30000);
+            console.log(socket.id, "マッチングに失敗しました");
+          }, 10000);
           _user.timeout = _timeout;
           this._waitMatching.push(_user);
         }
@@ -144,17 +150,16 @@ class Game {
       this._waitMatching = this._waitMatching.filter(
         (value) => value.id !== socket.id
       );
-    } else if (_user.status === "playing") {
+    } else if (_user.status === "playing" || _user.status === "ready") {
       //ユーザが参加しているゲームを探す
       const [_game, _user] = this.getGame(socket);
       //落ちた人と対戦していた人をタイトルに戻す
       const _opponent =
         _game.player1.id === socket.id ? _game.player2 : _game.player1;
       _opponent.status = "title";
-      _game.tetris.makePopup(
-        "相手とのコネクションが切断されたためタイトルに戻ります",
-        [_opponent.socket]
-      );
+      _game.tetris.makePopup("相手がゲームから退出しました", [
+        _opponent.socket,
+      ]);
       _game.tetris.gameEnd();
 
       //ゲームを終了させる
@@ -188,7 +193,10 @@ class Game {
     const _game = this._currentPlaying.find((value) => {
       return value.player1.id === socket.id || value.player2.id === socket.id;
     });
-    if (_game === undefined) throw new Error("game not found");
+    if (_game === undefined) {
+      this.emitMessage({ message: "backToTitle", socket: [socket] });
+      throw new Error("game not found");
+    }
     const _user =
       _game.player1.id === socket.id ? _game.player1 : _game.player2;
     return [_game, _user];
@@ -206,6 +214,8 @@ class Game {
     };
     this._currentPlaying.push(_matchingData);
 
+    player1.status = "ready";
+    player2.status = "ready";
     //ゲーム開始
     this.emitMessage({ message: "startGame", roomId: _roomId });
     //_game.gameStart();
