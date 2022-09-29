@@ -139,9 +139,6 @@ class Game {
       status: "title",
     };
     this._currentUser.push(_user);
-    this.io.emit("updateConnectionCount", {
-      newConnectCount: this._currentUser.length,
-    });
   }
 
   private RemoveConnection(socket: socketio.Socket): void {
