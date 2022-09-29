@@ -206,8 +206,8 @@ class Tetris {
     if (this.gameOverCheck()) {
       this.gameEnd();
 
-      const winnerUser: userData = this._currentTurnUser;
-      const loserUser: userData =
+      let loserUser: userData = this._currentTurnUser;
+      let winnerUser: userData =
         this._currentTurnUser === this._player[0]
           ? this._player[1]
           : this._player[0];
@@ -217,8 +217,8 @@ class Tetris {
           this._score[this._player[0].id] > this._score[this._player[1].id]
             ? [0, 1]
             : [1, 0];
-        const winnerUser = this._player[winner];
-        const loserUser = this._player[loser];
+        winnerUser = this._player[winner];
+        loserUser = this._player[loser];
       }
 
       this.makePopup(`あなたの勝ち! スコア:${this._score[winnerUser.id]}`, [
